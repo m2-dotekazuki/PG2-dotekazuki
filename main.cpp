@@ -2,14 +2,21 @@
 #include <vector>
 #include <cstdlib>
 #include <ctime>
+#include <iostream>
+#include <iomanip>
 
-// ƒvƒŒƒCƒ„[ƒNƒ‰ƒX
+// ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã‚¯ãƒ©ã‚¹
 class Player {
 public:
     Player(float startX, float startY) {
-        shape.setSize(sf::Vector2f(50.0f, 50.0f));
+        shape.setPointCount(3);
+        shape.setPoint(0, sf::Vector2f(0, -25));
+        shape.setPoint(1, sf::Vector2f(-20, 25));
+        shape.setPoint(2, sf::Vector2f(20, 25));
         shape.setPosition(startX, startY);
-        shape.setFillColor(sf::Color::Green);
+        shape.setFillColor(sf::Color::Yellow);
+        shape.setOutlineThickness(2);
+        shape.setOutlineColor(sf::Color::White);
         normalSpeed = 0.05f;
         speed = normalSpeed;
     }
@@ -19,11 +26,11 @@ public:
         pos.x += dx * speed;
         pos.y += dy * speed;
 
-        // ‰æ–Ê“à‚É§ŒÀ
+        // ç”»é¢å†…ã«åˆ¶é™
         if (pos.x < 0) pos.x = 0;
         if (pos.y < 0) pos.y = 0;
-        if (pos.x + shape.getSize().x > 800) pos.x = 800 - shape.getSize().x;
-        if (pos.y + shape.getSize().y > 600) pos.y = 600 - shape.getSize().y;
+        if (pos.x > 800) pos.x = 800;
+        if (pos.y > 600) pos.y = 600;
 
         shape.setPosition(pos);
     }
@@ -40,36 +47,42 @@ public:
         speed = normalSpeed;
     }
 
-    sf::RectangleShape getShape() const {
+    sf::ConvexShape getShape() const {
         return shape;
     }
 
 private:
-    sf::RectangleShape shape;
+    sf::ConvexShape shape;
     float speed;
     float normalSpeed;
 };
 
-// “GƒNƒ‰ƒX
+// æ•µã‚¯ãƒ©ã‚¹
 class Enemy {
 public:
     Enemy(float startX, float startY) {
-        shape.setSize(sf::Vector2f(50.0f, 50.0f));
+        shape.setRadius(20);
         shape.setPosition(startX, startY);
         shape.setFillColor(sf::Color::Red);
+        shape.setOutlineThickness(2);
+        shape.setOutlineColor(sf::Color::White);
         normalSpeed = 0.025f;
         speed = normalSpeed;
         direction = 1.0f;
         originalColor = shape.getFillColor();
+        animationClock.restart();
     }
 
     void move() {
         shape.move(0.0f, speed * direction);
+        // ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³
+        float scale = 1.0f + 0.1f * std::sin(animationClock.getElapsedTime().asSeconds() * 5);
+        shape.setScale(scale, scale);
     }
 
     void resetPosition() {
         float x = static_cast<float>(rand() % 800);
-        float y = direction > 0 ? 0.0f : 600.0f; // •ûŒü‚É‰‚¶‚ÄÄ”z’u
+        float y = direction > 0 ? 0.0f : 600.0f;
         shape.setPosition(x, y);
     }
 
@@ -92,43 +105,65 @@ public:
         speed = newSpeed;
     }
 
+    void increaseSpeed(float increment) {
+        speed += increment;
+    }
+
     void resetSpeed() {
         speed = normalSpeed;
     }
 
-    sf::RectangleShape getShape() const {
+    sf::CircleShape getShape() const {
         return shape;
     }
 
 private:
-    sf::RectangleShape shape;
+    sf::CircleShape shape;
     float speed;
     float normalSpeed;
     float direction;
     sf::Color originalColor;
     sf::Clock flashClock;
+    sf::Clock animationClock;
 };
 
-// “G‚ğ¶¬‚·‚éŠÖ”
-std::vector<Enemy> createEnemies(int count) {
-    std::vector<Enemy> enemies;
-    for (int i = 0; i < count; ++i) {
-        float x = static_cast<float>(rand() % 800);
-        float y = static_cast<float>(rand() % 600);
-        enemies.emplace_back(x, y);
+// èƒŒæ™¯ã‚¯ãƒ©ã‚¹
+class Background {
+public:
+    Background() {
+        texture.create(800, 600);
+        sf::Image image;
+        image.create(800, 600, sf::Color::Black);
+
+        // æ˜Ÿã‚’æç”»
+        for (int i = 0; i < 200; ++i) {
+            int x = rand() % 800;
+            int y = rand() % 600;
+            image.setPixel(x, y, sf::Color::White);
+        }
+
+        texture.update(image);
+        sprite.setTexture(texture);
     }
-    return enemies;
-}
 
-// Õ“Ë”»’èŠÖ”
-bool isColliding(const sf::RectangleShape& shape1, const sf::RectangleShape& shape2) {
-    return shape1.getGlobalBounds().intersects(shape2.getGlobalBounds());
-}
+    void draw(sf::RenderWindow& window) {
+        window.draw(sprite);
+    }
 
+private:
+    sf::Texture texture;
+    sf::Sprite sprite;
+};
+
+// ãƒ¡ã‚¤ãƒ³é–¢æ•°
 int main() {
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Simple Game");
-    Player player(400.0f, 300.0f);
-    std::vector<Enemy> enemies = createEnemies(5);
+    sf::RenderWindow window(sf::VideoMode(800, 600), "esc@pe");
+    Player player(400.0f, 500.0f);
+    std::vector<Enemy> enemies;
+    for (int i = 0; i < 5; ++i) {
+        enemies.emplace_back(rand() % 800, rand() % 300);
+    }
+    Background background;
 
     sf::Clock clock;
     srand(static_cast<unsigned>(time(0)));
@@ -138,6 +173,8 @@ int main() {
     sf::Clock invincibilityClock;
     sf::Clock directionChangeClock;
     sf::Clock flashClock;
+    sf::Clock speedIncreaseClock;
+    sf::Clock gameClock; // ã‚²ãƒ¼ãƒ é–‹å§‹ã‹ã‚‰ã®çµŒéæ™‚é–“ã‚’è¨ˆæ¸¬
 
     while (window.isOpen()) {
         sf::Event event;
@@ -146,7 +183,7 @@ int main() {
                 window.close();
         }
 
-        // ƒvƒŒƒCƒ„[‚ÌˆÚ“®
+        // ãƒ—ãƒ¬ã‚¤ãƒ¤ãƒ¼ã®ç§»å‹•
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
             player.move(-1.0f, 0.0f);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
@@ -156,34 +193,34 @@ int main() {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
             player.move(0.0f, 1.0f);
 
-        // “G‚ÌˆÚ“®
+        // æ•µã®ç§»å‹•
         for (auto& enemy : enemies) {
             enemy.move();
             if (enemy.getShape().getPosition().y > 600 || enemy.getShape().getPosition().y < 0) {
                 enemy.resetPosition();
             }
-            enemy.update(); // ƒtƒ‰ƒbƒVƒ…ƒGƒtƒFƒNƒg‚ÌXV
+            enemy.update(); // ãƒ•ãƒ©ãƒƒã‚·ãƒ¥ã‚¨ãƒ•ã‚§ã‚¯ãƒˆã®æ›´æ–°
         }
 
-        // Õ“Ë”»’è
+        // è¡çªåˆ¤å®š
         if (!isInvincible) {
             for (auto& enemy : enemies) {
-                if (isColliding(player.getShape(), enemy.getShape())) {
+                if (player.getShape().getGlobalBounds().intersects(enemy.getShape().getGlobalBounds())) {
                     collisionCount++;
                     player.reduceSpeed();
-                    enemy.flash(); // “G‚ğƒtƒ‰ƒbƒVƒ…‚³‚¹‚é
+                    enemy.flash();
                     isInvincible = true;
                     invincibilityClock.restart();
                     flashClock.restart();
                     if (collisionCount >= 3) {
-                        window.close(); // 3‰ñ“–‚½‚Á‚½‚çƒQ[ƒ€I—¹
+                        window.close();
                     }
-                    break; // ˆê“xÕ“Ë‚µ‚½‚ç‘¼‚Ì“G‚Æ‚Ì”»’è‚Í•s—v
+                    break;
                 }
             }
         }
 
-        // –³“GŠÔ‚Ìˆ—
+        // ç„¡æ•µæ™‚é–“ã®å‡¦ç†
         if (isInvincible && invincibilityClock.getElapsedTime().asSeconds() > 0.5f) {
             isInvincible = false;
             player.resetSpeed();
@@ -192,7 +229,7 @@ int main() {
             }
         }
 
-        // “G‚Ì•ûŒü“]Š·
+        // æ•µã®æ–¹å‘è»¢æ›
         if (directionChangeClock.getElapsedTime().asSeconds() > 10.0f) {
             for (auto& enemy : enemies) {
                 enemy.reverseDirection();
@@ -200,29 +237,41 @@ int main() {
             directionChangeClock.restart();
         }
 
-        // ‰æ–Ê‚Ì“_–Å‚Æ‘¬“x’²®
-        if (isInvincible) {
-            if (flashClock.getElapsedTime().asMilliseconds() % 100 < 50) {
-                window.clear(sf::Color::Red);
-            }
-            else {
-                window.clear();
-            }
-            player.setSpeed(0.0125f); // “_–Å’†‚ÍƒvƒŒƒCƒ„[‚Ì‘¬“x‚ğ25%‚É
+        // æ•µã®é€Ÿåº¦å¢—åŠ 
+        if (speedIncreaseClock.getElapsedTime().asSeconds() > 1.0f) {
             for (auto& enemy : enemies) {
-                enemy.setSpeed(0.00625f); // “_–Å’†‚Í“G‚Ì‘¬“x‚ğ25%‚É
+                enemy.increaseSpeed(0.005f); // 1ç§’ã”ã¨ã«é€Ÿåº¦ã‚’å¢—åŠ 
             }
-        }
-        else {
-            window.clear();
+            speedIncreaseClock.restart();
         }
 
+        // æç”»
+        window.clear();
+        background.draw(window);
         window.draw(player.getShape());
         for (const auto& enemy : enemies) {
             window.draw(enemy.getShape());
         }
+
+        // ç”»é¢ã®ç‚¹æ»…ã¨é€Ÿåº¦èª¿æ•´
+        if (isInvincible) {
+            if (flashClock.getElapsedTime().asMilliseconds() % 100 < 50) {
+                sf::RectangleShape flashRect(sf::Vector2f(800, 600));
+                flashRect.setFillColor(sf::Color(255, 0, 0, 100));
+                window.draw(flashRect);
+            }
+            player.setSpeed(0.0125f);
+            for (auto& enemy : enemies) {
+                enemy.setSpeed(0.00625f);
+            }
+        }
+
         window.display();
     }
+
+    // ã‚²ãƒ¼ãƒ çµ‚äº†æ™‚ã«çµŒéæ™‚é–“ã‚’è¡¨ç¤º
+    float elapsedTime = gameClock.getElapsedTime().asSeconds();
+    std::cout << "Your Score: " << std::fixed << std::setprecision(2) << elapsedTime << std::endl;
 
     return 0;
 }
